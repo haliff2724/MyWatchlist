@@ -11,15 +11,16 @@ interface Movie {
   imdbID: string;
   Type: string;
   Poster: string;
+  Genre?: string; // Add optional Genre tracking directly to the interface
 }
 
 const SUGGESTED_MOVIES: Movie[] = [
-  { Title: "The Dark Knight", Year: "2008", imdbID: "tt0468569", Type: "movie", Poster: "https://m.media-amazon.com/images/M/MV5BMTMxNTMwODM0NF5BMl5BanBnXkFtZTcwODAyMTk2Mw@@._V1_SX300.jpg" },
-  { Title: "Inception", Year: "2010", imdbID: "tt1375666", Type: "movie", Poster: "https://m.media-amazon.com/images/M/MV5BMjAxMzY3NjcxNF5BMl5BanBnXkFtZTcwNTI5OTM0Mw@@._V1_SX300.jpg" },
-  { Title: "Interstellar", Year: "2014", imdbID: "tt0816692", Type: "movie", Poster: "https://m.media-amazon.com/images/M/MV5BYzdjMDAxZGItMjI2My00ODA1LTlkNzItOWFjMDU5ZDJlYWY3XkEyXkFqcGc@._V1_SX300.jpg" },
-  { Title: "Ratatouille", Year: "2007", imdbID: "tt0382932", Type: "movie", Poster: "https://m.media-amazon.com/images/M/MV5BMTMzODU0NTkxMF5BMl5BanBnXkFtZTcwMjQ4MzMzMw@@._V1_SX300.jpg" },
-  { Title: "Cars", Year: "2006", imdbID: "tt0317219", Type: "movie", Poster: "https://m.media-amazon.com/images/M/MV5BMTg5NzY0MzA2MV5BMl5BanBnXkFtZTYwNDc3NTc2._V1_SX300.jpg" },
-  { Title: "Moana", Year: "2016", imdbID: "tt3521164", Type: "movie", Poster: "https://m.media-amazon.com/images/M/MV5BMjI4MzU5NTExNF5BMl5BanBnXkFtZTgwNzY1MTEwMDI@._V1_SX300.jpg" }
+  { Title: "The Dark Knight", Year: "2008", imdbID: "tt0468569", Type: "movie", Poster: "https://m.media-amazon.com/images/M/MV5BMTMxNTMwODM0NF5BMl5BanBnXkFtZTcwODAyMTk2Mw@@._V1_SX300.jpg", Genre: "Action, Drama" },
+  { Title: "Inception", Year: "2010", imdbID: "tt1375666", Type: "movie", Poster: "https://m.media-amazon.com/images/M/MV5BMjAxMzY3NjcxNF5BMl5BanBnXkFtZTcwNTI5OTM0Mw@@._V1_SX300.jpg", Genre: "Action, Sci-Fi, Adventure" },
+  { Title: "Interstellar", Year: "2014", imdbID: "tt0816692", Type: "movie", Poster: "https://m.media-amazon.com/images/M/MV5BYzdjMDAxZGItMjI2My00ODA1LTlkNzItOWFjMDU5ZDJlYWY3XkEyXkFqcGc@._V1_SX300.jpg", Genre: "Sci-Fi, Adventure, Drama" },
+  { Title: "Ratatouille", Year: "2007", imdbID: "tt0382932", Type: "movie", Poster: "https://m.media-amazon.com/images/M/MV5BMTMzODU0NTkxMF5BMl5BanBnXkFtZTcwMjQ4MzMzMw@@._V1_SX300.jpg", Genre: "Animation, Adventure" },
+  { Title: "Cars", Year: "2006", imdbID: "tt0317219", Type: "movie", Poster: "https://m.media-amazon.com/images/M/MV5BMTg5NzY0MzA2MV5BMl5BanBnXkFtZTYwNDc3NTc2._V1_SX300.jpg", Genre: "Animation, Adventure" },
+  { Title: "Moana", Year: "2016", imdbID: "tt3521164", Type: "movie", Poster: "https://m.media-amazon.com/images/M/MV5BMjI4MzU5NTExNF5BMl5BanBnXkFtZTgwNzY1MTEwMDI@._V1_SX300.jpg", Genre: "Animation, Adventure" }
 ];
 
 const GENRES = ['All', 'Action', 'Sci-Fi', 'Animation', 'Adventure', 'Drama'];
@@ -30,8 +31,6 @@ export default function Index() {
   const [searchText, setSearchText] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [selectedGenre, setSelectedGenre] = useState<string>('All');
-  
-  // --- STATE UNTUK JEJAK SAMA ADA USER TENGAH SEARCH ATAU LIHAT SUGGESTION ---
   const [isSearching, setIsSearching] = useState<boolean>(false);
 
   const API_KEY = 'c1aecf62'; 
@@ -42,14 +41,14 @@ export default function Index() {
     
     if (!cleanQuery) {
       setMovies(SUGGESTED_MOVIES); 
-      setIsSearching(false); // Kembali ke mod asal (Suggested)
+      setIsSearching(false); 
       return;
     }
 
     Keyboard.dismiss();
     setLoading(true);
     setErrorMessage('');
-    setIsSearching(true); // Tukar mod kepada Search Results
+    setIsSearching(true); 
 
     try {
       const url = `https://www.omdbapi.com/?apikey=${API_KEY}&s=${cleanQuery}`;
@@ -57,7 +56,27 @@ export default function Index() {
       const data = await response.json();
       
       if (data.Response === 'True' && data.Search) {
-        setMovies(data.Search);
+        const basicResults: Movie[] = data.Search;
+
+        // --- FETCH GENRES FOR SEARCH RESULTS ---
+        // Fetch specific details concurrently for all returned items
+        const detailedMovies = await Promise.all(
+          basicResults.map(async (item) => {
+            try {
+              const detailUrl = `https://www.omdbapi.com/?apikey=${API_KEY}&i=${item.imdbID}`;
+              const detailRes = await fetch(detailUrl);
+              const detailData = await detailRes.json();
+              return {
+                ...item,
+                Genre: detailData.Genre || 'N/A' // Store genre string directly on object
+              };
+            } catch {
+              return { ...item, Genre: 'N/A' };
+            }
+          })
+        );
+
+        setMovies(detailedMovies);
       } else {
         setMovies([]);
         setErrorMessage(data.Error || 'No movies found.');
@@ -80,7 +99,16 @@ export default function Index() {
         return;
       }
 
-      currentList.push(movie);
+      // Save baseline fields
+      const saveItem = {
+        Title: movie.Title,
+        Year: movie.Year,
+        imdbID: movie.imdbID,
+        Type: movie.Type,
+        Poster: movie.Poster
+      };
+
+      currentList.push(saveItem);
       await AsyncStorage.setItem('watchlist', JSON.stringify(currentList));
       Alert.alert('Berjaya!', `"${movie.Title}" dimasukkan ke Watchlist.`);
     } catch (error) {
@@ -88,26 +116,19 @@ export default function Index() {
     }
   };
 
+  // --- DYNAMIC FILTER LOGIC FOR BOTH SUGGESTED & LIVE SEARCH RESULTS ---
   const filteredMovies = movies.filter((movie) => {
     if (selectedGenre === 'All') return true;
+    if (!movie.Genre) return false;
 
-    const mockGenreMap: Record<string, string[]> = {
-      "tt0468569": ['Action', 'Drama'],
-      "tt1375666": ['Action', 'Sci-Fi', 'Adventure'],
-      "tt0816692": ['Sci-Fi', 'Adventure', 'Drama'],
-      "tt0382932": ['Animation', 'Adventure'],
-      "tt0317219": ['Animation', 'Adventure'],
-      "tt3521164": ['Animation', 'Adventure']
-    };
-
-    const genresForMovie = mockGenreMap[movie.imdbID] || [];
-    return genresForMovie.includes(selectedGenre);
+    // Check if the selected category is bundled anywhere inside the comma-separated API string
+    return movie.Genre.toLowerCase().includes(selectedGenre.toLowerCase());
   });
 
   const renderEmptyState = () => (
     <View style={styles.centerContainer}>
       <Text style={styles.placeholderText}>
-        {errorMessage ? `⚠️ ${errorMessage}` : 'No movies match your filter criteria.'}
+        {errorMessage ? `⚠️ ${errorMessage}` : 'No movies match this category filter.'}
       </Text>
     </View>
   );
@@ -127,7 +148,8 @@ export default function Index() {
             setSearchText(text);
             if (!text.trim()) {
               setMovies(SUGGESTED_MOVIES);
-              setIsSearching(false); // Reset auto jika user padam teks carian
+              setIsSearching(false);
+              setSelectedGenre('All');
             }
           }}
           onSubmitEditing={searchMovies}
@@ -158,7 +180,6 @@ export default function Index() {
         </ScrollView>
       </View>
 
-      {/* --- TAMBAHAN TEKS DINAMIK: SUGGESTED MOVIES / SEARCH RESULTS --- */}
       {!loading && (
         <Text style={styles.sectionHeading}>
           {isSearching ? '🔍 Search Results' : '✨ Suggested Movies'}
@@ -258,7 +279,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: 'bold',
   },
-  // --- STYLE UNTUK SECTION HEADING ---
   sectionHeading: {
     color: '#FFFFFF',
     fontSize: 18,
@@ -266,7 +286,6 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     letterSpacing: 0.5,
   },
-  // -----------------------------------
   loader: { 
     flex: 1, 
     justifyContent: 'center' 
