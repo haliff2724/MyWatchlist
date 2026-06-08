@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "S3G1First",
-    "slug": "S3G1First",
+    "name": "MyWatchlist",
+    "slug": "MyWatchlist",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/icon.jpg",
     "scheme": "s3g1first",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
