@@ -2,7 +2,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-// 1. IMPORT SAFEAREAVIEW
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { styles } from './detailcss';
 
@@ -33,7 +32,7 @@ export default function Details() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   
-  // Now accessing id safely from the navigation route
+
   const { id } = route.params as { id: string };
 
   const [movie, setMovie] = useState<MovieDetail | null>(null);
@@ -246,7 +245,7 @@ export default function Details() {
   }
 
   return (
-    // 2. WRAP THE CONTENT IN SAFEAREAVIEW AND SPECIFY THE 'TOP' EDGE
+
     <SafeAreaView style={{ flex: 1, backgroundColor: '#141414' }} edges={['top']}>
       <KeyboardAvoidingView 
         style={{ flex: 1 }} 

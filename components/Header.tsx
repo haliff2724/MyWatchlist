@@ -5,17 +5,17 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 
 
-// 💡 Di sini kita daftarkan jenis data (Props) supaya TypeScript faham dan tak marah
+
 interface HeaderProps {
   title: string;
-  showBack?: boolean;      // Tanda soal (?) bermaksud ia bersifat optional
-  backAction?: () => void; // Fungsi optional untuk custom back trigger
+  showBack?: boolean;     
+  backAction?: () => void; 
 }
 
 export default function Header({ title, showBack = false, backAction }: HeaderProps) {
   const router = useRouter();
 
-  // Jika ada custom backAction guna yang tu, jika tiada automatik guna router.back()
+
   const handleBack = () => {
     if (backAction) {
       backAction();

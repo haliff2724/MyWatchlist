@@ -6,12 +6,12 @@ interface MovieCardProps {
   image: string;
   type: string;
   year: string;
-  rightAction?: React.ReactNode; // Menyokong butang aksi dinamik di sebelah kanan kad
+  rightAction?: React.ReactNode; 
 }
 
 export default function MovieCard({ title, image, type, year, rightAction }: MovieCardProps) {
   
-  // Jika imej daripada API bernilai 'N/A', gunakan placeholder asas
+  
   const posterSource = image && image !== 'N/A' 
     ? { uri: image } 
     : { uri: 'https://via.placeholder.com/150/262626/FFFFFF?text=No+Poster' };

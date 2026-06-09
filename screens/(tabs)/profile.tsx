@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// 1. Changed import source from 'expo-router' to '@react-navigation/native'
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useState } from 'react';
 import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -15,27 +14,27 @@ interface UserAccount {
 }
 
 export default function Profile({ navigation }: { navigation?: any }) {
-  // --- STATE PENGURUSAN SESI & MOD ---
+  
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
   const [isEditingProfile, setIsEditingProfile] = useState<boolean>(false);
 
-  // --- STATE BORANG AUTH (LOGIN / REGISTER) ---
+  
   const [emailInput, setEmailInput] = useState<string>('');
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [confirmPasswordInput, setConfirmPasswordInput] = useState<string>('');
 
-  // --- STATE DATA PROFIL (UNTUK AKAUN AKTIF) ---
+ 
   const [name, setName] = useState<string>('');
   const [bio, setBio] = useState<string>('');
   const [avatar, setAvatar] = useState<string>('');
 
-  // --- STATE INPUT BORANG EDIT PROFIL ---
+ 
   const [inputName, setInputName] = useState<string>('');
   const [inputBio, setInputBio] = useState<string>('');
   const [inputAvatar, setInputAvatar] = useState<string>('');
 
-  // Semak sesi login setiap kali skrin difokuskan
+  
   useFocusEffect(
     React.useCallback(() => {
       checkUserSession();

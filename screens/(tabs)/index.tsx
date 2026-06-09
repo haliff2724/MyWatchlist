@@ -27,9 +27,9 @@ const SUGGESTED_MOVIES: Movie[] = [
 const GENRES = ['All', 'Action', 'Sci-Fi', 'Animation', 'Adventure', 'Drama'];
 
 export default function Index() {
-  const navigation = useNavigation<any>(); // 2. Call the hook
+  const navigation = useNavigation<any>();
 
-  // Now you can use it anywhere inside this component
+
   const handlePress = (id: string) => {
     navigation.navigate('Details', { id: id }); 
   };
@@ -191,7 +191,7 @@ export default function Index() {
           contentContainerStyle={{ paddingBottom: 24 }}
           ListEmptyComponent={renderEmptyState}
           renderItem={({ item }) => (
-            // --- UPDATED NAVIGATION LOGIC ---
+           
             <Pressable 
               style={{ width: '100%' }}
               onPress={() => navigation.navigate('Details', { id: item.imdbID })}
@@ -217,20 +217,60 @@ export default function Index() {
 
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#141414', paddingHorizontal: 16, paddingTop: 50 },
-  searchRow: { flexDirection: 'row', marginBottom: 12, gap: 10 },
-  input: { flex: 1, backgroundColor: '#262626', paddingHorizontal: 16, borderRadius: 8, color: '#FFFFFF', height: 48 },
-  searchButton: { backgroundColor: '#E50914', justifyContent: 'center', paddingHorizontal: 20, borderRadius: 8, height: 48 },
-  searchButtonText: { color: '#FFFFFF', fontWeight: 'bold' },
-  genreContainer: { marginBottom: 16, height: 36 },
-  genreTab: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, backgroundColor: '#262626', marginRight: 8, justifyContent: 'center', alignItems: 'center', height: 32 },
-  genreTabActive: { backgroundColor: '#E50914' },
-  genreText: { color: '#999999', fontSize: 14, fontWeight: '600' },
-  genreTextActive: { color: '#FFFFFF', fontWeight: 'bold' },
-  sectionHeading: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold', marginBottom: 14, letterSpacing: 0.5 },
-  loader: { flex: 1, justifyContent: 'center' },
-  centerContainer: { flex: 1, paddingVertical: 40, justifyContent: 'center', alignItems: 'center' },
-  placeholderText: { color: '#666666', fontSize: 16, textAlign: 'center' },
-  addBtn: { backgroundColor: '#333', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: '#E50914', marginRight: 12 },
-  addBtnText: { color: '#E50914', fontWeight: 'bold', fontSize: 12 },
+  container: { 
+    flex: 1,
+    backgroundColor: '#141414',
+    paddingHorizontal: 16, paddingTop: 50 },
+  searchRow: { 
+    flexDirection: 'row',
+    marginBottom: 12, 
+    gap: 10 },
+  input: { 
+    flex: 1, 
+    backgroundColor: '#262626', 
+    paddingHorizontal: 16, borderRadius: 8, 
+    color: '#FFFFFF', 
+    height: 48 },
+  searchButton: { 
+    backgroundColor: '#E50914', 
+    justifyContent: 'center', 
+    paddingHorizontal: 20, 
+    borderRadius: 8, 
+    height: 48 },
+  searchButtonText: { 
+    color: '#FFFFFF', 
+    fontWeight: 'bold' },
+    
+    genreContainer: { 
+    marginBottom: 16, height: 36 },
+  
+    genreTab: { 
+    paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, backgroundColor: '#262626', marginRight: 8, justifyContent: 'center', alignItems: 'center', height: 32 },
+  
+    genreTabActive: { 
+    backgroundColor: '#E50914' },
+  
+    genreText: { 
+    color: '#999999', fontSize: 14, fontWeight: '600' },
+  
+    genreTextActive: { 
+    color: '#FFFFFF', fontWeight: 'bold' },
+  
+    sectionHeading: { 
+    color: '#FFFFFF', fontSize: 18, fontWeight: 'bold', marginBottom: 14, letterSpacing: 0.5 },
+  
+    loader: { 
+    flex: 1, justifyContent: 'center' },
+  
+    centerContainer: { 
+    flex: 1, paddingVertical: 40, justifyContent: 'center', alignItems: 'center' },
+  
+    placeholderText: { 
+    color: '#666666', fontSize: 16, textAlign: 'center' },
+  
+    addBtn: { 
+    backgroundColor: '#333', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: '#E50914', marginRight: 12 },
+  
+    addBtnText: { 
+    color: '#E50914', fontWeight: 'bold', fontSize: 12 },
 });

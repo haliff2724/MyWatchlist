@@ -171,5 +171,22 @@ export const styles = StyleSheet.create({
     fontStyle: 'italic', 
     textAlign: 'center', 
     lineHeight: 20 
-  }
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+    paddingBottom: 4
+  },
+  commentUsername: {
+    color: '#E50914',
+    fontWeight: 'bold',
+    fontSize: 14
+  },
+  commentDate: {
+    color: '#777',
+    fontSize: 12
+  },
 });

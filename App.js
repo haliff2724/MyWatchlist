@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-// 1. UPDATE THESE PATHS TO MATCH YOUR RENAMED FOLDER
+
 import Details from './screens/(tabs)/details';
 import Index from './screens/(tabs)/index';
 import Profile from './screens/(tabs)/profile';

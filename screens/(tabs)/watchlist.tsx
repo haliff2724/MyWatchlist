@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// 1. Import useFocusEffect from @react-navigation/native
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -15,7 +14,7 @@ interface Movie {
   Poster: string;
 }
 
-// 2. Accept the navigation prop
+
 export default function Watchlist({ navigation }: { navigation: any }) {
   const [watchlist, setWatchlist] = useState<Movie[]>([]);
 
