@@ -112,7 +112,7 @@ export default function Index() {
       await AsyncStorage.setItem('watchlist', JSON.stringify(currentList));
       Alert.alert('Berjaya!', `"${movie.Title}" dimasukkan ke Watchlist.`);
     } catch (error) {
-      Alert.alert('Ralat', 'Gagal menyimpan movie.');
+      Alert.alert('Error', 'adding movie to watchlist.');
     }
   };
 
