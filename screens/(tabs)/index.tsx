@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Link } from 'expo-router';
+import { useNavigation } from '@react-navigation/native'; // 1. Import the hook
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Header from '../../components/Header';
@@ -11,7 +11,7 @@ interface Movie {
   imdbID: string;
   Type: string;
   Poster: string;
-  Genre?: string; // Add optional Genre tracking directly to the interface
+  Genre?: string;
 }
 
 const SUGGESTED_MOVIES: Movie[] = [
@@ -23,9 +23,17 @@ const SUGGESTED_MOVIES: Movie[] = [
   { Title: "Moana", Year: "2016", imdbID: "tt3521164", Type: "movie", Poster: "https://m.media-amazon.com/images/M/MV5BMjI4MzU5NTExNF5BMl5BanBnXkFtZTgwNzY1MTEwMDI@._V1_SX300.jpg", Genre: "Animation, Adventure" }
 ];
 
+
 const GENRES = ['All', 'Action', 'Sci-Fi', 'Animation', 'Adventure', 'Drama'];
 
 export default function Index() {
+  const navigation = useNavigation<any>(); // 2. Call the hook
+
+  // Now you can use it anywhere inside this component
+  const handlePress = (id: string) => {
+    navigation.navigate('Details', { id: id }); 
+  };
+
   const [movies, setMovies] = useState<Movie[]>(SUGGESTED_MOVIES);
   const [loading, setLoading] = useState<boolean>(false);
   const [searchText, setSearchText] = useState<string>('');
@@ -57,9 +65,6 @@ export default function Index() {
       
       if (data.Response === 'True' && data.Search) {
         const basicResults: Movie[] = data.Search;
-
-        // --- FETCH GENRES FOR SEARCH RESULTS ---
-        // Fetch specific details concurrently for all returned items
         const detailedMovies = await Promise.all(
           basicResults.map(async (item) => {
             try {
@@ -68,14 +73,13 @@ export default function Index() {
               const detailData = await detailRes.json();
               return {
                 ...item,
-                Genre: detailData.Genre || 'N/A' // Store genre string directly on object
+                Genre: detailData.Genre || 'N/A'
               };
             } catch {
               return { ...item, Genre: 'N/A' };
             }
           })
         );
-
         setMovies(detailedMovies);
       } else {
         setMovies([]);
@@ -92,14 +96,11 @@ export default function Index() {
     try {
       const existingData = await AsyncStorage.getItem('watchlist');
       let currentList = existingData ? JSON.parse(existingData) : [];
-      
       const isExist = currentList.some((item: Movie) => item.imdbID === movie.imdbID);
       if (isExist) {
         Alert.alert('Info', 'This movie has been added to your Watchlist');
         return;
       }
-
-      // Save baseline fields
       const saveItem = {
         Title: movie.Title,
         Year: movie.Year,
@@ -107,7 +108,6 @@ export default function Index() {
         Type: movie.Type,
         Poster: movie.Poster
       };
-
       currentList.push(saveItem);
       await AsyncStorage.setItem('watchlist', JSON.stringify(currentList));
       Alert.alert('Berjaya!', `"${movie.Title}" dimasukkan ke Watchlist.`);
@@ -116,12 +116,9 @@ export default function Index() {
     }
   };
 
-  // --- DYNAMIC FILTER LOGIC FOR BOTH SUGGESTED & LIVE SEARCH RESULTS ---
   const filteredMovies = movies.filter((movie) => {
     if (selectedGenre === 'All') return true;
     if (!movie.Genre) return false;
-
-    // Check if the selected category is bundled anywhere inside the comma-separated API string
     return movie.Genre.toLowerCase().includes(selectedGenre.toLowerCase());
   });
 
@@ -137,7 +134,6 @@ export default function Index() {
     <View style={styles.container}>
       <Header title="🎬 MyWatchlist" />
 
-      {/* Bar Carian */}
       <View style={styles.searchRow}>
         <TextInput
           style={styles.input}
@@ -160,7 +156,6 @@ export default function Index() {
         </Pressable>
       </View>
 
-      {/* Horizontal Genre Filter Bar */}
       <View style={styles.genreContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {GENRES.map((genre) => {
@@ -186,7 +181,6 @@ export default function Index() {
         </Text>
       )}
 
-      {/* Indikator Loading / Senarai Filem */}
       {loading ? (
         <ActivityIndicator size="large" color="#E50914" style={styles.loader} />
       ) : (
@@ -197,24 +191,23 @@ export default function Index() {
           contentContainerStyle={{ paddingBottom: 24 }}
           ListEmptyComponent={renderEmptyState}
           renderItem={({ item }) => (
-            <Link 
-              href={{ pathname: '/details', params: { id: item.imdbID } }} 
-              asChild
+            // --- UPDATED NAVIGATION LOGIC ---
+            <Pressable 
+              style={{ width: '100%' }}
+              onPress={() => navigation.navigate('Details', { id: item.imdbID })}
             >
-              <Pressable style={{ width: '100%' }}>
-                <MovieCard
-                  title={item.Title}
-                  image={item.Poster}
-                  type={item.Type}
-                  year={item.Year}
-                  rightAction={
-                    <Pressable style={styles.addBtn} onPress={() => addToWatchlist(item)}>
-                      <Text style={styles.addBtnText}>+ Watchlist</Text>
-                    </Pressable>
-                  }
-                />
-              </Pressable>
-            </Link>
+              <MovieCard
+                title={item.Title}
+                image={item.Poster}
+                type={item.Type}
+                year={item.Year}
+                rightAction={
+                  <Pressable style={styles.addBtn} onPress={() => addToWatchlist(item)}>
+                    <Text style={styles.addBtnText}>+ Watchlist</Text>
+                  </Pressable>
+                }
+              />
+            </Pressable>
           )}
         />
       )}
@@ -222,97 +215,22 @@ export default function Index() {
   );
 }
 
+
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#141414', 
-    paddingHorizontal: 16, 
-    paddingTop: 50 
-  },
-  searchRow: { 
-    flexDirection: 'row', 
-    marginBottom: 12, 
-    gap: 10 
-  },
-  input: { 
-    flex: 1, 
-    backgroundColor: '#262626', 
-    paddingHorizontal: 16, 
-    borderRadius: 8, 
-    color: '#FFFFFF', 
-    height: 48 
-  },
-  searchButton: { 
-    backgroundColor: '#E50914', 
-    justifyContent: 'center', 
-    paddingHorizontal: 20, 
-    borderRadius: 8, 
-    height: 48 
-  },
-  searchButtonText: { 
-    color: '#FFFFFF', 
-    fontWeight: 'bold' 
-  },
-  genreContainer: {
-    marginBottom: 16,
-    height: 36,
-  },
-  genreTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: '#262626',
-    marginRight: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: 32,
-  },
-  genreTabActive: {
-    backgroundColor: '#E50914',
-  },
-  genreText: {
-    color: '#999999',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  genreTextActive: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  sectionHeading: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 14,
-    letterSpacing: 0.5,
-  },
-  loader: { 
-    flex: 1, 
-    justifyContent: 'center' 
-  },
-  centerContainer: { 
-    flex: 1, 
-    paddingVertical: 40, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
-  },
-  placeholderText: { 
-    color: '#666666', 
-    fontSize: 16, 
-    textAlign: 'center' 
-  },
-  addBtn: { 
-    backgroundColor: '#333', 
-    paddingHorizontal: 12, 
-    paddingVertical: 8, 
-    borderRadius: 6, 
-    borderWidth: 1, 
-    borderColor: '#E50914', 
-    marginRight: 12 
-  },
-  addBtnText: { 
-    color: '#E50914', 
-    fontWeight: 'bold', 
-    fontSize: 12 
-  },
+  container: { flex: 1, backgroundColor: '#141414', paddingHorizontal: 16, paddingTop: 50 },
+  searchRow: { flexDirection: 'row', marginBottom: 12, gap: 10 },
+  input: { flex: 1, backgroundColor: '#262626', paddingHorizontal: 16, borderRadius: 8, color: '#FFFFFF', height: 48 },
+  searchButton: { backgroundColor: '#E50914', justifyContent: 'center', paddingHorizontal: 20, borderRadius: 8, height: 48 },
+  searchButtonText: { color: '#FFFFFF', fontWeight: 'bold' },
+  genreContainer: { marginBottom: 16, height: 36 },
+  genreTab: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, backgroundColor: '#262626', marginRight: 8, justifyContent: 'center', alignItems: 'center', height: 32 },
+  genreTabActive: { backgroundColor: '#E50914' },
+  genreText: { color: '#999999', fontSize: 14, fontWeight: '600' },
+  genreTextActive: { color: '#FFFFFF', fontWeight: 'bold' },
+  sectionHeading: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold', marginBottom: 14, letterSpacing: 0.5 },
+  loader: { flex: 1, justifyContent: 'center' },
+  centerContainer: { flex: 1, paddingVertical: 40, justifyContent: 'center', alignItems: 'center' },
+  placeholderText: { color: '#666666', fontSize: 16, textAlign: 'center' },
+  addBtn: { backgroundColor: '#333', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: '#E50914', marginRight: 12 },
+  addBtnText: { color: '#E50914', fontWeight: 'bold', fontSize: 12 },
 });

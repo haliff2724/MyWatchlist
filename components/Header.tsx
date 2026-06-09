@@ -3,6 +3,8 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+
+
 // 💡 Di sini kita daftarkan jenis data (Props) supaya TypeScript faham dan tak marah
 interface HeaderProps {
   title: string;
@@ -10,7 +12,7 @@ interface HeaderProps {
   backAction?: () => void; // Fungsi optional untuk custom back trigger
 }
 
-export default function Header({ title, showBack = true, backAction }: HeaderProps) {
+export default function Header({ title, showBack = false, backAction }: HeaderProps) {
   const router = useRouter();
 
   // Jika ada custom backAction guna yang tu, jika tiada automatik guna router.back()

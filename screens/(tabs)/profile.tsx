@@ -1,20 +1,20 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from 'expo-router';
+// 1. Changed import source from 'expo-router' to '@react-navigation/native'
+import { useFocusEffect } from '@react-navigation/native';
 import React, { useState } from 'react';
 import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
 
-// Interface untuk struktur data setiap pengguna
 interface UserAccount {
   email: string;
-  password?: string; // Disimpan semasa register
+  password?: string;
   name: string;
   bio: string;
   avatar: string;
 }
 
-export default function Profile() {
+export default function Profile({ navigation }: { navigation?: any }) {
   // --- STATE PENGURUSAN SESI & MOD ---
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
@@ -42,7 +42,6 @@ export default function Profile() {
     }, [])
   );
 
-  // Semak sama ada ada user yang tengah aktif login
   const checkUserSession = async () => {
     try {
       const activeEmail = await AsyncStorage.getItem('current_user_email');
@@ -57,7 +56,6 @@ export default function Profile() {
     }
   };
 
-  // Muat naik data profil spesifik milik e-mel yang aktif
   const loadUserProfile = async (userEmail: string) => {
     try {
       const allUsersData = await AsyncStorage.getItem('registered_users');
@@ -76,7 +74,6 @@ export default function Profile() {
     }
   };
 
-  // --- LOGIK REGISTER (DAFTAR AKAUN BARU) ---
   const handleRegister = async () => {
     const cleanEmail = emailInput.trim();
     const cleanPassword = passwordInput.trim();
@@ -87,7 +84,6 @@ export default function Profile() {
       return;
     }
 
-    // Validasi format email asas
     if (!cleanEmail.includes('@') || !cleanEmail.includes('.')) {
       Alert.alert('Error', 'Please enter a valid email address.');
       return;
@@ -107,18 +103,16 @@ export default function Profile() {
       const allUsersData = await AsyncStorage.getItem('registered_users');
       let usersList: UserAccount[] = allUsersData ? JSON.parse(allUsersData) : [];
 
-      // Semak kalau email sudah wujud
       const isEmailExist = usersList.some((u) => u.email.toLowerCase() === cleanEmail.toLowerCase());
       if (isEmailExist) {
         Alert.alert('Error', 'This email is already registered.');
         return;
       }
 
-      // Cipta akaun baru dengan default profile info
       const newUser: UserAccount = {
         email: cleanEmail,
         password: cleanPassword,
-        name: cleanEmail.split('@')[0], // Guna depan email sebagai nama asal
+        name: cleanEmail.split('@')[0],
         bio: 'Binge-watching is my cardio 🍿',
         avatar: 'https://via.placeholder.com/150/E50914/FFFFFF?text=User',
       };
@@ -141,7 +135,6 @@ export default function Profile() {
     }
   };
 
-  // --- LOGIK LOGIN (LOG MASUK) ---
   const handleLogin = async () => {
     const cleanEmail = emailInput.trim();
     const cleanPassword = passwordInput.trim();
@@ -159,22 +152,18 @@ export default function Profile() {
       }
 
       const usersList: UserAccount[] = JSON.parse(allUsersData);
-      // Cari user yang match email DAN password
       const userFound = usersList.find(
         (u) => u.email.toLowerCase() === cleanEmail.toLowerCase() && u.password === cleanPassword
       );
 
       if (userFound) {
-        // Simpan sesi e-mel aktif
         await AsyncStorage.setItem('current_user_email', userFound.email);
         setCurrentUserEmail(userFound.email);
         
-        // Load data dia
         setName(userFound.name);
         setBio(userFound.bio);
         setAvatar(userFound.avatar);
 
-        // Reset form inputs
         setEmailInput('');
         setPasswordInput('');
         Alert.alert('Welcome Back!', `Logged in successfully as ${userFound.name}`);
@@ -186,7 +175,6 @@ export default function Profile() {
     }
   };
 
-  // --- LOGIK LOGOUT (LOG KELUAR) ---
   const handleLogout = async () => {
     Alert.alert('Logout', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
@@ -202,7 +190,6 @@ export default function Profile() {
     ]);
   };
 
-  // --- LOGIK EDIT & UPDATE PROFIL ---
   const handleStartEdit = () => {
     setInputName(name);
     setInputBio(bio);
@@ -221,7 +208,6 @@ export default function Profile() {
       if (allUsersData && currentUserEmail) {
         let usersList: UserAccount[] = JSON.parse(allUsersData);
         
-        // Kemas kini data user di dalam array induk
         usersList = usersList.map((u) => {
           if (u.email.toLowerCase() === currentUserEmail.toLowerCase()) {
             return {
@@ -235,14 +221,12 @@ export default function Profile() {
         });
 
         await AsyncStorage.setItem('registered_users', JSON.stringify(usersList));
-
-        // Kemas kini state UI local
         setName(inputName.trim());
         setBio(inputBio.trim());
         setAvatar(inputAvatar.trim() || 'https://via.placeholder.com/150/E50914/FFFFFF?text=User');
         
         setIsEditingProfile(false);
-        Alert.alert('Success', 'Your profile profile has been updated!');
+        Alert.alert('Success', 'Your profile has been updated!');
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to update profile.');
@@ -258,8 +242,6 @@ export default function Profile() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          
-          {/* ================= JIKA BELUM LOGIN (BORANG AUTH) ================= */}
           {!currentUserEmail ? (
             <View style={styles.authWrapper}>
               <Text style={styles.authTitle}>
@@ -329,7 +311,6 @@ export default function Profile() {
               </Pressable>
             </View>
           ) : (
-            /* ================= JIKA SUDAH LOGIN ================= */
             <View style={styles.profileWrapper}>
               <Image
                 source={{ uri: isEditingProfile ? inputAvatar : avatar || 'https://via.placeholder.com/150/E50914/FFFFFF?text=User' }}
@@ -337,7 +318,6 @@ export default function Profile() {
               />
 
               {!isEditingProfile ? (
-                /* PAPARAN PROFIL */
                 <View style={styles.infoWrapper}>
                   <Text style={styles.nameText}>{name}</Text>
                   <Text style={styles.emailSubText}>✉️ {currentUserEmail}</Text>
@@ -352,7 +332,6 @@ export default function Profile() {
                   </Pressable>
                 </View>
               ) : (
-                /* BORANG EDIT PROFIL */
                 <View style={styles.formWrapper}>
                   <Text style={styles.label}>Profile Name</Text>
                   <TextInput
@@ -395,7 +374,6 @@ export default function Profile() {
               )}
             </View>
           )}
-
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -403,154 +381,30 @@ export default function Profile() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#141414',
-    paddingHorizontal: 16,
-  },
-  scrollContent: {
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-  authWrapper: {
-    width: '100%',
-    paddingHorizontal: 10,
-    marginTop: 20,
-  },
-  authTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  profileWrapper: {
-    alignItems: 'center',
-    width: '100%',
-  },
-  avatarImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 3,
-    borderColor: '#E50914',
-    marginBottom: 20,
-    backgroundColor: '#262626',
-  },
-  infoWrapper: {
-    alignItems: 'center',
-    width: '100%',
-    gap: 10,
-  },
-  nameText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  emailSubText: {
-    fontSize: 14,
-    color: '#888888',
-    marginBottom: 5,
-  },
-  bioText: {
-    fontSize: 15,
-    color: '#AAAAAA',
-    textAlign: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  primaryBtn: {
-    backgroundColor: '#E50914',
-    height: 48,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-  },
-  editButton: {
-    backgroundColor: '#E50914',
-    paddingVertical: 12,
-    paddingHorizontal: 35,
-    borderRadius: 25,
-    marginTop: 10,
-  },
-  logoutButton: {
-    backgroundColor: 'transparent',
-    paddingVertical: 10,
-    paddingHorizontal: 35,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: '#FF4D4D',
-    marginTop: 15,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  logoutBtnText: {
-    color: '#FF4D4D',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  switchAuthBtn: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  switchAuthText: {
-    color: '#E50914',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  formWrapper: {
-    width: '100%',
-    paddingHorizontal: 10,
-  },
-  label: {
-    color: '#E50914',
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 6,
-    marginTop: 14,
-  },
-  input: {
-    backgroundColor: '#262626',
-    borderRadius: 8,
-    color: '#FFFFFF',
-    paddingHorizontal: 14,
-    height: 48,
-    fontSize: 15,
-    width: '100%',
-  },
-  bioInput: {
-    height: 80,
-    paddingTop: 12,
-    textAlignVertical: 'top',
-  },
-  actionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 30,
-    gap: 15,
-  },
-  btn: {
-    flex: 1,
-    height: 48,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  saveBtn: {
-    backgroundColor: '#00B14F',
-  },
-  cancelBtn: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#666',
-  },
-  cancelBtnText: {
-    color: '#AAAAAA',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
+  container: { flex: 1, backgroundColor: '#141414', paddingHorizontal: 16 },
+  scrollContent: { paddingVertical: 20, alignItems: 'center' },
+  authWrapper: { width: '100%', paddingHorizontal: 10, marginTop: 20 },
+  authTitle: { fontSize: 22, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 20, textAlign: 'center' },
+  profileWrapper: { alignItems: 'center', width: '100%' },
+  avatarImage: { width: 120, height: 120, borderRadius: 60, borderWidth: 3, borderColor: '#E50914', marginBottom: 20, backgroundColor: '#262626' },
+  infoWrapper: { alignItems: 'center', width: '100%', gap: 10 },
+  nameText: { fontSize: 24, fontWeight: 'bold', color: '#FFFFFF' },
+  emailSubText: { fontSize: 14, color: '#888888', marginBottom: 5 },
+  bioText: { fontSize: 15, color: '#AAAAAA', textAlign: 'center', paddingHorizontal: 20, marginBottom: 20 },
+  primaryBtn: { backgroundColor: '#E50914', height: 48, borderRadius: 8, justifyContent: 'center', alignItems: 'center', width: '100%' },
+  editButton: { backgroundColor: '#E50914', paddingVertical: 12, paddingHorizontal: 35, borderRadius: 25, marginTop: 10 },
+  logoutButton: { backgroundColor: 'transparent', paddingVertical: 10, paddingHorizontal: 35, borderRadius: 25, borderWidth: 1, borderColor: '#FF4D4D', marginTop: 15 },
+  buttonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 16 },
+  logoutBtnText: { color: '#FF4D4D', fontWeight: 'bold', fontSize: 14 },
+  switchAuthBtn: { marginTop: 20, alignItems: 'center' },
+  switchAuthText: { color: '#E50914', fontSize: 14, fontWeight: '600' },
+  formWrapper: { width: '100%', paddingHorizontal: 10 },
+  label: { color: '#E50914', fontSize: 14, fontWeight: 'bold', marginBottom: 6, marginTop: 14 },
+  input: { backgroundColor: '#262626', borderRadius: 8, color: '#FFFFFF', paddingHorizontal: 14, height: 48, fontSize: 15, width: '100%' },
+  bioInput: { height: 80, paddingTop: 12, textAlignVertical: 'top' },
+  actionRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 30, gap: 15 },
+  btn: { flex: 1, height: 48, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  saveBtn: { backgroundColor: '#00B14F' },
+  cancelBtn: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#666' },
+  cancelBtnText: { color: '#AAAAAA', fontWeight: 'bold', fontSize: 16 },
 });

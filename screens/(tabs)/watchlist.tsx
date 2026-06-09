@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Link, useFocusEffect } from 'expo-router';
+// 1. Import useFocusEffect from @react-navigation/native
+import { useFocusEffect } from '@react-navigation/native';
 import React, { useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,7 +15,8 @@ interface Movie {
   Poster: string;
 }
 
-export default function Watchlist() {
+// 2. Accept the navigation prop
+export default function Watchlist({ navigation }: { navigation: any }) {
   const [watchlist, setWatchlist] = useState<Movie[]>([]);
 
   useFocusEffect(
@@ -55,10 +57,8 @@ export default function Watchlist() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header aplikasi */}
       <Header title="🍿 Watchlist" />
 
-      {/* FlatList terus diletakkan tanpa wrapper tambahan */}
       <FlatList
         data={watchlist}
         keyExtractor={(item) => item.imdbID}
@@ -66,24 +66,23 @@ export default function Watchlist() {
         contentContainerStyle={styles.scrollContent}
         ListEmptyComponent={renderEmptyWatchlist}
         renderItem={({ item }) => (
-          <Link 
-            href={{ pathname: '/details', params: { id: item.imdbID } }} 
-            asChild
+          /* 3. Replaced <Link> with Pressable + navigation.navigate */
+          <Pressable 
+            style={{ width: '100%' }}
+            onPress={() => navigation.navigate('Details', { id: item.imdbID })}
           >
-            <Pressable style={{ width: '100%' }}>
-              <MovieCard
-                title={item.Title}
-                image={item.Poster}
-                type={item.Type}
-                year={item.Year}
-                rightAction={
-                  <Pressable style={styles.deleteBtn} onPress={() => deleteMovie(item.imdbID)}>
-                    <Text style={styles.deleteText}>Delete</Text>
-                  </Pressable>
-                }
-              />
-            </Pressable>
-          </Link>
+            <MovieCard
+              title={item.Title}
+              image={item.Poster}
+              type={item.Type}
+              year={item.Year}
+              rightAction={
+                <Pressable style={styles.deleteBtn} onPress={() => deleteMovie(item.imdbID)}>
+                  <Text style={styles.deleteText}>Delete</Text>
+                </Pressable>
+              }
+            />
+          </Pressable>
         )}
       />
     </SafeAreaView>
@@ -97,10 +96,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16
   },
   scrollContent: { 
-    paddingBottom: 40 // Ruang kosong di bawah supaya item terakhir tidak tersorok bawah tab bar
+    paddingBottom: 40 
   },
   separator: { 
-    height: 12 // Jarak yang rapat dan kemas antara setiap kad filem
+    height: 12 
   },
   centerContainer: { 
     flex: 1, 
@@ -114,7 +113,7 @@ const styles = StyleSheet.create({
   },
   deleteBtn: { 
     width: 80,             
-    height: 125,           // Mengikut saiz ketinggian kekal poster MovieCard
+    height: 125,          
     justifyContent: 'center', 
     alignItems: 'center', 
     backgroundColor: '#262626', 
