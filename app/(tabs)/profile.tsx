@@ -1,54 +1,215 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
 
-export default function Profile() {
-  // State untuk menyimpan data profil pengguna
-  const [name, setName] = useState<string>('Movie Lover');
-  const [bio, setBio] = useState<string>('Binge-watching is my cardio 🍿');
-  const [avatar, setAvatar] = useState<string>('https://via.placeholder.com/150/E50914/FFFFFF?text=User');
+// Interface untuk struktur data setiap pengguna
+interface UserAccount {
+  email: string;
+  password?: string; // Disimpan semasa register
+  name: string;
+  bio: string;
+  avatar: string;
+}
 
-  // State sementara untuk memegang nilai input ketika sedang menaip/edit
+export default function Profile() {
+  // --- STATE PENGURUSAN SESI & MOD ---
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const [authMode, setAuthMode] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
+  const [isEditingProfile, setIsEditingProfile] = useState<boolean>(false);
+
+  // --- STATE BORANG AUTH (LOGIN / REGISTER) ---
+  const [emailInput, setEmailInput] = useState<string>('');
+  const [passwordInput, setPasswordInput] = useState<string>('');
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState<string>('');
+
+  // --- STATE DATA PROFIL (UNTUK AKAUN AKTIF) ---
+  const [name, setName] = useState<string>('');
+  const [bio, setBio] = useState<string>('');
+  const [avatar, setAvatar] = useState<string>('');
+
+  // --- STATE INPUT BORANG EDIT PROFIL ---
   const [inputName, setInputName] = useState<string>('');
   const [inputBio, setInputBio] = useState<string>('');
   const [inputAvatar, setInputAvatar] = useState<string>('');
 
-  // State untuk mengawal mod: FALSE = Papar Profil, TRUE = Mod Edit Form
-  const [isEditing, setIsEditing] = useState<boolean>(false);
-
-  // Ambil data profil lama yang tersimpan dari AsyncStorage sebaik sahaja skrin difokuskan
+  // Semak sesi login setiap kali skrin difokuskan
   useFocusEffect(
     React.useCallback(() => {
-      loadProfileData();
+      checkUserSession();
     }, [])
   );
 
-  const loadProfileData = async () => {
+  // Semak sama ada ada user yang tengah aktif login
+  const checkUserSession = async () => {
     try {
-      const savedName = await AsyncStorage.getItem('user_name');
-      const savedBio = await AsyncStorage.getItem('user_bio');
-      const savedAvatar = await AsyncStorage.getItem('user_avatar');
-
-      if (savedName) setName(savedName);
-      if (savedBio) setBio(savedBio);
-      if (savedAvatar) setAvatar(savedAvatar);
+      const activeEmail = await AsyncStorage.getItem('current_user_email');
+      if (activeEmail) {
+        setCurrentUserEmail(activeEmail);
+        loadUserProfile(activeEmail);
+      } else {
+        setCurrentUserEmail(null);
+      }
     } catch (error) {
-      console.error('Failed to upload profile data:', error);
+      console.error('Error checking session:', error);
     }
   };
 
-  // Fungsi untuk mengaktifkan mod mengedit dan mengisi data sedia ada ke dalam input form
+  // Muat naik data profil spesifik milik e-mel yang aktif
+  const loadUserProfile = async (userEmail: string) => {
+    try {
+      const allUsersData = await AsyncStorage.getItem('registered_users');
+      if (allUsersData) {
+        const usersList: UserAccount[] = JSON.parse(allUsersData);
+        const matchedUser = usersList.find((u) => u.email.toLowerCase() === userEmail.toLowerCase());
+        
+        if (matchedUser) {
+          setName(matchedUser.name);
+          setBio(matchedUser.bio);
+          setAvatar(matchedUser.avatar);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load profile data:', error);
+    }
+  };
+
+  // --- LOGIK REGISTER (DAFTAR AKAUN BARU) ---
+  const handleRegister = async () => {
+    const cleanEmail = emailInput.trim();
+    const cleanPassword = passwordInput.trim();
+    const cleanConfirm = confirmPasswordInput.trim();
+
+    if (!cleanEmail || !cleanPassword || !cleanConfirm) {
+      Alert.alert('Error', 'Please fill in all fields.');
+      return;
+    }
+
+    // Validasi format email asas
+    if (!cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+      Alert.alert('Error', 'Please enter a valid email address.');
+      return;
+    }
+
+    if (cleanPassword.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters long.');
+      return;
+    }
+
+    if (cleanPassword !== cleanConfirm) {
+      Alert.alert('Error', 'Passwords do not match.');
+      return;
+    }
+
+    try {
+      const allUsersData = await AsyncStorage.getItem('registered_users');
+      let usersList: UserAccount[] = allUsersData ? JSON.parse(allUsersData) : [];
+
+      // Semak kalau email sudah wujud
+      const isEmailExist = usersList.some((u) => u.email.toLowerCase() === cleanEmail.toLowerCase());
+      if (isEmailExist) {
+        Alert.alert('Error', 'This email is already registered.');
+        return;
+      }
+
+      // Cipta akaun baru dengan default profile info
+      const newUser: UserAccount = {
+        email: cleanEmail,
+        password: cleanPassword,
+        name: cleanEmail.split('@')[0], // Guna depan email sebagai nama asal
+        bio: 'Binge-watching is my cardio 🍿',
+        avatar: 'https://via.placeholder.com/150/E50914/FFFFFF?text=User',
+      };
+
+      usersList.push(newUser);
+      await AsyncStorage.setItem('registered_users', JSON.stringify(usersList));
+
+      Alert.alert('Success', 'Account registered successfully! Please login.', [
+        {
+          text: 'OK',
+          onPress: () => {
+            setAuthMode('LOGIN');
+            setPasswordInput('');
+            setConfirmPasswordInput('');
+          },
+        },
+      ]);
+    } catch (error) {
+      Alert.alert('Error', 'Registration failed.');
+    }
+  };
+
+  // --- LOGIK LOGIN (LOG MASUK) ---
+  const handleLogin = async () => {
+    const cleanEmail = emailInput.trim();
+    const cleanPassword = passwordInput.trim();
+
+    if (!cleanEmail || !cleanPassword) {
+      Alert.alert('Error', 'Please enter your email and password.');
+      return;
+    }
+
+    try {
+      const allUsersData = await AsyncStorage.getItem('registered_users');
+      if (!allUsersData) {
+        Alert.alert('Error', 'No registered users found. Please sign up first.');
+        return;
+      }
+
+      const usersList: UserAccount[] = JSON.parse(allUsersData);
+      // Cari user yang match email DAN password
+      const userFound = usersList.find(
+        (u) => u.email.toLowerCase() === cleanEmail.toLowerCase() && u.password === cleanPassword
+      );
+
+      if (userFound) {
+        // Simpan sesi e-mel aktif
+        await AsyncStorage.setItem('current_user_email', userFound.email);
+        setCurrentUserEmail(userFound.email);
+        
+        // Load data dia
+        setName(userFound.name);
+        setBio(userFound.bio);
+        setAvatar(userFound.avatar);
+
+        // Reset form inputs
+        setEmailInput('');
+        setPasswordInput('');
+        Alert.alert('Welcome Back!', `Logged in successfully as ${userFound.name}`);
+      } else {
+        Alert.alert('Error', 'Invalid email or password.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Login process failed.');
+    }
+  };
+
+  // --- LOGIK LOGOUT (LOG KELUAR) ---
+  const handleLogout = async () => {
+    Alert.alert('Logout', 'Are you sure you want to log out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Yes, Logout',
+        style: 'destructive',
+        onPress: async () => {
+          await AsyncStorage.removeItem('current_user_email');
+          setCurrentUserEmail(null);
+          setIsEditingProfile(false);
+        },
+      },
+    ]);
+  };
+
+  // --- LOGIK EDIT & UPDATE PROFIL ---
   const handleStartEdit = () => {
     setInputName(name);
     setInputBio(bio);
     setInputAvatar(avatar);
-    setIsEditing(true);
+    setIsEditingProfile(true);
   };
 
-  // Fungsi untuk menyimpan data baharu ke AsyncStorage
   const handleSaveProfile = async () => {
     if (!inputName.trim()) {
       Alert.alert('Error', 'Please enter your name.');
@@ -56,87 +217,187 @@ export default function Profile() {
     }
 
     try {
-      await AsyncStorage.setItem('user_name', inputName);
-      await AsyncStorage.setItem('user_bio', inputBio);
-      await AsyncStorage.setItem('user_avatar', inputAvatar || 'https://via.placeholder.com/150/E50914/FFFFFF?text=User');
+      const allUsersData = await AsyncStorage.getItem('registered_users');
+      if (allUsersData && currentUserEmail) {
+        let usersList: UserAccount[] = JSON.parse(allUsersData);
+        
+        // Kemas kini data user di dalam array induk
+        usersList = usersList.map((u) => {
+          if (u.email.toLowerCase() === currentUserEmail.toLowerCase()) {
+            return {
+              ...u,
+              name: inputName.trim(),
+              bio: inputBio.trim(),
+              avatar: inputAvatar.trim() || 'https://via.placeholder.com/150/E50914/FFFFFF?text=User',
+            };
+          }
+          return u;
+        });
 
-      // Kemas kini state paparan utama
-      setName(inputName);
-      setBio(inputBio);
-      setAvatar(inputAvatar);
-      
-      setIsEditing(false); // Keluar dari mod edit
-      Alert.alert('Success', 'Your profile has been updated!');
+        await AsyncStorage.setItem('registered_users', JSON.stringify(usersList));
+
+        // Kemas kini state UI local
+        setName(inputName.trim());
+        setBio(inputBio.trim());
+        setAvatar(inputAvatar.trim() || 'https://via.placeholder.com/150/E50914/FFFFFF?text=User');
+        
+        setIsEditingProfile(false);
+        Alert.alert('Success', 'Your profile profile has been updated!');
+      }
     } catch (error) {
-      Alert.alert('Error', 'Failed to update.');
+      Alert.alert('Error', 'Failed to update profile.');
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header title="👤 My Profile" />
+      <Header title={currentUserEmail ? "👤 My Profile" : "🔑 Authentication"} showBack={false} />
 
-      <View style={styles.contentContainer}>
-        {/* Bahagian Paparan Imej Avatar */}
-        <Image 
-          source={{ uri: isEditing ? inputAvatar : avatar }} 
-          style={styles.avatarImage} 
-        />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          
+          {/* ================= JIKA BELUM LOGIN (BORANG AUTH) ================= */}
+          {!currentUserEmail ? (
+            <View style={styles.authWrapper}>
+              <Text style={styles.authTitle}>
+                {authMode === 'LOGIN' ? 'Sign In to Your Account' : 'Create New Account'}
+              </Text>
 
-        {!isEditing ? (
-          /* ================= PAPARAN PROFIL ASAL ================= */
-          <View style={styles.infoWrapper}>
-            <Text style={styles.nameText}>{name}</Text>
-            <Text style={styles.bioText}>{bio}</Text>
+              <Text style={styles.label}>Email Address</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="example@email.com"
+                placeholderTextColor="#666"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                value={emailInput}
+                onChangeText={setEmailInput}
+              />
 
-            <Pressable style={styles.editButton} onPress={handleStartEdit}>
-              <Text style={styles.buttonText}>Edit Profile</Text>
-            </Pressable>
-          </View>
-        ) : (
-          /* ================= MOD BORANG EDIT (EDIT FORM) ================= */
-          <View style={styles.formWrapper}>
-            <Text style={styles.label}>Profile Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Masukkan nama anda"
-              placeholderTextColor="#666"
-              value={inputName}
-              onChangeText={setInputName}
-            />
+              <Text style={styles.label}>Password</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter password"
+                placeholderTextColor="#666"
+                secureTextEntry
+                autoCapitalize="none"
+                value={passwordInput}
+                onChangeText={setPasswordInput}
+              />
 
-            <Text style={styles.label}>Bio / Description</Text>
-            <TextInput
-              style={[styles.input, styles.bioInput]}
-              placeholder="Tulis bio ringkas..."
-              placeholderTextColor="#666"
-              value={inputBio}
-              onChangeText={setInputBio}
-              multiline
-            />
+              {authMode === 'REGISTER' && (
+                <View style={{ width: '100%' }}>
+                  <Text style={styles.label}>Confirm Password</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Re-enter password"
+                    placeholderTextColor="#666"
+                    secureTextEntry
+                    autoCapitalize="none"
+                    value={confirmPasswordInput}
+                    onChangeText={setConfirmPasswordInput}
+                  />
+                </View>
+              )}
 
-            <Text style={styles.label}>Avatar Image URL</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Masukkan URL gambar profil"
-              placeholderTextColor="#666"
-              value={inputAvatar}
-              onChangeText={setInputAvatar}
-            />
-
-            {/* Butang Aksi Simpan / Batal */}
-            <View style={styles.actionRow}>
-              <Pressable style={[styles.btn, styles.cancelBtn]} onPress={() => setIsEditing(false)}>
-                <Text style={styles.cancelBtnText}>Batal</Text>
+              <Pressable
+                style={[styles.primaryBtn, { marginTop: 25 }]}
+                onPress={authMode === 'LOGIN' ? handleLogin : handleRegister}
+              >
+                <Text style={styles.buttonText}>
+                  {authMode === 'LOGIN' ? 'Log In' : 'Register Now'}
+                </Text>
               </Pressable>
 
-              <Pressable style={[styles.btn, styles.saveBtn]} onPress={handleSaveProfile}>
-                <Text style={styles.buttonText}>Simpan</Text>
+              <Pressable
+                onPress={() => {
+                  setAuthMode(authMode === 'LOGIN' ? 'REGISTER' : 'LOGIN');
+                  setEmailInput('');
+                  setPasswordInput('');
+                  setConfirmPasswordInput('');
+                }}
+                style={styles.switchAuthBtn}
+              >
+                <Text style={styles.switchAuthText}>
+                  {authMode === 'LOGIN'
+                    ? "Don't have an account? Sign Up"
+                    : 'Already have an account? Log In'}
+                </Text>
               </Pressable>
             </View>
-          </View>
-        )}
-      </View>
+          ) : (
+            /* ================= JIKA SUDAH LOGIN ================= */
+            <View style={styles.profileWrapper}>
+              <Image
+                source={{ uri: isEditingProfile ? inputAvatar : avatar || 'https://via.placeholder.com/150/E50914/FFFFFF?text=User' }}
+                style={styles.avatarImage}
+              />
+
+              {!isEditingProfile ? (
+                /* PAPARAN PROFIL */
+                <View style={styles.infoWrapper}>
+                  <Text style={styles.nameText}>{name}</Text>
+                  <Text style={styles.emailSubText}>✉️ {currentUserEmail}</Text>
+                  <Text style={styles.bioText}>{bio}</Text>
+
+                  <Pressable style={styles.editButton} onPress={handleStartEdit}>
+                    <Text style={styles.buttonText}>Edit Profile</Text>
+                  </Pressable>
+
+                  <Pressable style={styles.logoutButton} onPress={handleLogout}>
+                    <Text style={styles.logoutBtnText}>Logout</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                /* BORANG EDIT PROFIL */
+                <View style={styles.formWrapper}>
+                  <Text style={styles.label}>Profile Name</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter your name"
+                    placeholderTextColor="#666"
+                    value={inputName}
+                    onChangeText={setInputName}
+                  />
+
+                  <Text style={styles.label}>Bio / Description</Text>
+                  <TextInput
+                    style={[styles.input, styles.bioInput]}
+                    placeholder="Tell us about yourself..."
+                    placeholderTextColor="#666"
+                    value={inputBio}
+                    onChangeText={setInputBio}
+                    multiline
+                  />
+
+                  <Text style={styles.label}>Avatar Image URL</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Paste image URL here"
+                    placeholderTextColor="#666"
+                    value={inputAvatar}
+                    onChangeText={setInputAvatar}
+                  />
+
+                  <View style={styles.actionRow}>
+                    <Pressable style={[styles.btn, styles.cancelBtn]} onPress={() => setIsEditingProfile(false)}>
+                      <Text style={styles.cancelBtnText}>Batal</Text>
+                    </Pressable>
+
+                    <Pressable style={[styles.btn, styles.saveBtn]} onPress={handleSaveProfile}>
+                      <Text style={styles.buttonText}>Simpan</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
+
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -147,9 +408,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#141414',
     paddingHorizontal: 16,
   },
-  contentContainer: {
+  scrollContent: {
+    paddingVertical: 20,
     alignItems: 'center',
-    paddingVertical: 30,
+  },
+  authWrapper: {
+    width: '100%',
+    paddingHorizontal: 10,
+    marginTop: 20,
+  },
+  authTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  profileWrapper: {
+    alignItems: 'center',
+    width: '100%',
   },
   avatarImage: {
     width: 120,
@@ -158,7 +435,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#E50914',
     marginBottom: 20,
-    backgroundColor: '#262626'
+    backgroundColor: '#262626',
   },
   infoWrapper: {
     alignItems: 'center',
@@ -170,6 +447,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
+  emailSubText: {
+    fontSize: 14,
+    color: '#888888',
+    marginBottom: 5,
+  },
   bioText: {
     fontSize: 15,
     color: '#AAAAAA',
@@ -177,16 +459,48 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 20,
   },
+  primaryBtn: {
+    backgroundColor: '#E50914',
+    height: 48,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+  },
   editButton: {
     backgroundColor: '#E50914',
     paddingVertical: 12,
-    paddingHorizontal: 30,
+    paddingHorizontal: 35,
     borderRadius: 25,
+    marginTop: 10,
+  },
+  logoutButton: {
+    backgroundColor: 'transparent',
+    paddingVertical: 10,
+    paddingHorizontal: 35,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: '#FF4D4D',
+    marginTop: 15,
   },
   buttonText: {
     color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  logoutBtnText: {
+    color: '#FF4D4D',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  switchAuthBtn: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  switchAuthText: {
+    color: '#E50914',
+    fontSize: 14,
+    fontWeight: '600',
   },
   formWrapper: {
     width: '100%',
@@ -206,6 +520,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     height: 48,
     fontSize: 15,
+    width: '100%',
   },
   bioInput: {
     height: 80,
@@ -226,7 +541,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   saveBtn: {
-    backgroundColor: '#00B14F', // Warna hijau untuk butang simpan sukses
+    backgroundColor: '#00B14F',
   },
   cancelBtn: {
     backgroundColor: 'transparent',

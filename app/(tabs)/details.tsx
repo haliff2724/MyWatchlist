@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { styles } from './detailcss';
@@ -17,6 +17,16 @@ interface MovieDetail {
   imdbID: string;
 }
 
+// Interface untuk struktur setiap komen awam
+interface PublicComment {
+  id: string; // ID unik untuk setiap komen
+  userId: string; // Email penulis komen
+  userName: string; // Nama penulis komen
+  userAvatar: string; // Gambar profil penulis komen
+  text: string; // Isi komen
+  timestamp: string; // Tarikh/Masa komen dibuat
+}
+
 export default function Details() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
@@ -25,23 +35,61 @@ export default function Details() {
   const [loading, setLoading] = useState<boolean>(true);
   const [isInWatchlist, setIsInWatchlist] = useState<boolean>(false);
   
-  // State untuk pengurusan komen
-  const [comment, setComment] = useState<string>('');
-  const [savedComment, setSavedComment] = useState<string>('');
-  const [isEditing, setIsEditing] = useState<boolean>(false);
+  // --- STATE PENGURUSAN AKAUN AKTIF ---
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const [currentUserData, setCurrentUserData] = useState<{ name: string; avatar: string } | null>(null);
 
-  // --- TAMBAH STATE BARU UNTUK TOGGLE PLOT ---
+  // --- STATE PENGURUSAN KOMEN AWAM ---
+  const [commentsList, setCommentsList] = useState<PublicComment[]>([]);
+  const [commentInput, setCommentInput] = useState<string>('');
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+
+  // State untuk toggle plot summary
   const [isPlotExpanded, setIsPlotExpanded] = useState<boolean>(false);
 
   const API_KEY = 'c1aecf62';
+
+  // Trigger setiap kali skrin difokuskan untuk memastikan data akaun terkini
+  useFocusEffect(
+    React.useCallback(() => {
+      if (id) {
+        checkUserSession();
+        loadPublicComments();
+      }
+    }, [id])
+  );
 
   useEffect(() => {
     if (id) {
       fetchMovieDetails();
       checkWatchlistStatus();
-      loadSavedComment();
     }
   }, [id]);
+
+  // Semak sesi akaun yang sedang aktif log masuk
+  const checkUserSession = async () => {
+    try {
+      const activeEmail = await AsyncStorage.getItem('current_user_email');
+      if (activeEmail) {
+        setCurrentUserEmail(activeEmail);
+        
+        // Tarik maklumat nama dan avatar akaun aktif daripada registered_users
+        const allUsersData = await AsyncStorage.getItem('registered_users');
+        if (allUsersData) {
+          const usersList = JSON.parse(allUsersData);
+          const matchedUser = usersList.find((u: any) => u.email.toLowerCase() === activeEmail.toLowerCase());
+          if (matchedUser) {
+            setCurrentUserData({ name: matchedUser.name, avatar: matchedUser.avatar });
+          }
+        }
+      } else {
+        setCurrentUserEmail(null);
+        setCurrentUserData(null);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const fetchMovieDetails = async () => {
     try {
@@ -99,34 +147,68 @@ export default function Details() {
     }
   };
 
-  const loadSavedComment = async () => {
+  // --- AMBIL SEMUA KOMEN KONGSI (PUBLIC) ---
+  const loadPublicComments = async () => {
     try {
-      const checkSaved = await AsyncStorage.getItem(`comment_${id}`);
-      if (checkSaved) {
-        setSavedComment(checkSaved);
-        setComment(checkSaved);
+      const savedComments = await AsyncStorage.getItem(`movie_comments_${id}`);
+      if (savedComments) {
+        setCommentsList(JSON.parse(savedComments));
+      } else {
+        setCommentsList([]);
       }
     } catch (error) {
-      console.error(error);
+      console.error('Failed to load comments:', error);
     }
   };
 
+  // --- SIMPAN / TAMBAH KOMEN BARU ATAU KEMASKINI KOMEN ---
   const saveComment = async () => {
-    if (!comment.trim()) {
+    if (!commentInput.trim()) {
       Alert.alert('Reminder', 'Please enter comment before saving.');
       return;
     }
+    if (!currentUserEmail || !currentUserData) {
+      Alert.alert('Error', 'You must be logged in to comment.');
+      return;
+    }
+
     try {
-      await AsyncStorage.setItem(`comment_${id}`, comment);
-      setSavedComment(comment);
-      setIsEditing(false);
-      Alert.alert('Successful', 'Your comment has been saved.');
+      let updatedList = [...commentsList];
+
+      if (editingCommentId) {
+        // Logik Kemas Kini (Edit Mode) - Ganti teks pada ID yang sepadan
+        updatedList = updatedList.map((c) => {
+          if (c.id === editingCommentId) {
+            return { ...c, text: commentInput.trim() };
+          }
+          return c;
+        });
+        setEditingCommentId(null);
+        Alert.alert('Successful', 'Your comment has been updated.');
+      } else {
+        // Logik Tambah Komen Baharu (Jika bukan dalam mod edit)
+        const newComment: PublicComment = {
+          id: Date.now().toString(),
+          userId: currentUserEmail,
+          userName: currentUserData.name,
+          userAvatar: currentUserData.avatar,
+          text: commentInput.trim(),
+          timestamp: new Date().toLocaleDateString('ms-MY'),
+        };
+        updatedList.push(newComment);
+        Alert.alert('Successful', 'Your comment has been saved.');
+      }
+
+      await AsyncStorage.setItem(`movie_comments_${id}`, JSON.stringify(updatedList));
+      setCommentsList(updatedList);
+      setCommentInput('');
     } catch (error) {
-      Alert.alert('Error', 'Your comment has fail to be save.');
+      Alert.alert('Error', 'Failed to save comment.');
     }
   };
 
-  const deleteComment = async () => {
+  // --- PADAM KOMEN (HANYA MILIK SENDIRI) ---
+  const deleteComment = async (commentId: string) => {
     Alert.alert('Deleting Comment', 'Are you sure to delete this comment?', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -134,16 +216,24 @@ export default function Details() {
         style: 'destructive',
         onPress: async () => {
           try {
-            await AsyncStorage.removeItem(`comment_${id}`);
-            setSavedComment('');
-            setComment('');
-            setIsEditing(false);
+            const updatedList = commentsList.filter((c) => c.id !== commentId);
+            await AsyncStorage.setItem(`movie_comments_${id}`, JSON.stringify(updatedList));
+            setCommentsList(updatedList);
+            if (editingCommentId === commentId) {
+              setEditingCommentId(null);
+              setCommentInput('');
+            }
           } catch (error) {
             Alert.alert('Error', 'Failed to delete the comment.');
           }
         }
       }
     ]);
+  };
+
+  const startEditComment = (comment: PublicComment) => {
+    setEditingCommentId(comment.id);
+    setCommentInput(comment.text);
   };
 
   if (loading) {
@@ -200,17 +290,16 @@ export default function Details() {
             </Text>
           </Pressable>
 
-          {/* --- KEMASKINI DI SINI: SEKSYEN PLOT SUMMARY DENGAN TOGGLE ACTION --- */}
+          {/* PLOT SUMMARY SECTION */}
           <Text style={styles.sectionTitle}>Plot Summary</Text>
           <Text 
             style={styles.plot}
-            numberOfLines={isPlotExpanded ? undefined : 3} // Menunjukkan 3 barisan sahaja jika belum di-expand
+            numberOfLines={isPlotExpanded ? undefined : 3}
             ellipsizeMode="tail"
           >
             {movie.Plot}
           </Text>
           
-          {/* Butang Show More / Show Less hanya muncul jika teks plot melebihi panjang standard */}
           {movie.Plot && movie.Plot.length > 100 && (
             <Pressable 
               onPress={() => setIsPlotExpanded(!isPlotExpanded)}
@@ -221,59 +310,90 @@ export default function Details() {
               </Text>
             </Pressable>
           )}
-          {/* ------------------------------------------------------------------ */}
 
-          {/* SEKSYEN KOMEN */}
-          {isInWatchlist ? (
-            <View style={styles.commentSection}>
-              <Text style={styles.sectionTitle}>Comments</Text>
+          {/* ================= SEKSYEN KOMEN AWAM KONGSI ================= */}
+          <View style={styles.commentSection}>
+            <Text style={styles.sectionTitle}>Public Comments ({commentsList.length})</Text>
+
+            {/* Senarai Semua Komen (Semua Akaun Boleh Lihat) */}
+            {commentsList.map((item) => {
+              const isMyComment = currentUserEmail && item.userId.toLowerCase() === currentUserEmail.toLowerCase();
               
-              {savedComment && !isEditing ? (
-                <View style={styles.commentBox}>
-                  <Text style={styles.commentText}>"{savedComment}"</Text>
-                  <View style={styles.commentActionRow}>
-                    <Pressable style={styles.textBtn} onPress={() => setIsEditing(true)}>
-                      <Text style={styles.editBtnText}>✏️ Edit</Text>
-                    </Pressable>
-                    <Pressable style={styles.textBtn} onPress={deleteComment}>
-                      <Text style={styles.deleteCommentText}>🗑️ Delete</Text>
-                    </Pressable>
+              return (
+                <View key={item.id} style={styles.commentBox}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6, gap: 8 }}>
+                    <Image source={{ uri: item.userAvatar }} style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#333' }} />
+                    <Text style={{ color: '#E50914', fontWeight: 'bold', fontSize: 13 }}>{item.userName}</Text>
+                    <Text style={{ color: '#666', fontSize: 11 }}>{item.timestamp}</Text>
+                    {isMyComment && <Text style={{ color: '#00B14F', fontSize: 10, fontWeight: 'bold' }}>(You)</Text>}
                   </View>
+                  
+                  <Text style={styles.commentText}>"{item.text}"</Text>
+
+                  {/* Butang Aksi Edit/Delete Cuma Muncul Jika Komen Ini Milik Akaun Yang Sedang Login */}
+                  {isMyComment && (
+                    <View style={styles.commentActionRow}>
+                      <Pressable style={styles.textBtn} onPress={() => startEditComment(item)}>
+                        <Text style={styles.editBtnText}>✏️ Edit</Text>
+                      </Pressable>
+                      <Pressable style={styles.textBtn} onPress={() => deleteComment(item.id)}>
+                        <Text style={styles.deleteCommentText}>🗑️ Delete</Text>
+                      </Pressable>
+                    </View>
+                  )}
                 </View>
-              ) : (
-                <View>
+              );
+            })}
+
+            {commentsList.length === 0 && (
+              <Text style={{ color: '#666', fontStyle: 'italic', marginVertical: 10, textAlign: 'center' }}>
+                No comments yet. Be the first to share your thoughts!
+              </Text>
+            )}
+
+            {/* Input Borang Komen */}
+            {currentUserEmail ? (
+              isInWatchlist ? (
+                <View style={{ marginTop: 15 }}>
+                  <Text style={[styles.sectionTitle, { fontSize: 14, color: '#AAA' }]}>
+                    {editingCommentId ? '📝 Edit Your Comment:' : '💬 Add a Comment:'}
+                  </Text>
                   <TextInput
                     style={styles.commentInput}
                     placeholder="Tulis pendapat atau nota peribadi anda mengenai filem ini..."
                     placeholderTextColor="#666666"
                     multiline
-                    value={comment}
-                    onChangeText={setComment}
+                    value={commentInput}
+                    onChangeText={setCommentInput}
                   />
                   <View style={styles.buttonRow}>
                     <Pressable style={[styles.actionBtn, styles.saveBtn]} onPress={saveComment}>
-                      <Text style={styles.btnTextBase}>Save Comment</Text>
+                      <Text style={styles.btnTextBase}>
+                        {editingCommentId ? 'Update Comment' : 'Save Comment'}
+                      </Text>
                     </Pressable>
                     
-                    {isEditing && (
+                    {editingCommentId && (
                       <Pressable style={[styles.actionBtn, styles.cancelBtn]} onPress={() => {
-                        setComment(savedComment);
-                        setIsEditing(false);
+                        setEditingCommentId(null);
+                        setCommentInput('');
                       }}>
                         <Text style={styles.btnTextBase}>Cancel</Text>
                       </Pressable>
                     )}
                   </View>
                 </View>
-              )}
-            </View>
-          ) : (
-            <View style={styles.commentSection}>
-              <Text style={styles.lockedCommentText}>
-                🔒 Add this movie into **Watchlist** first before commenting.
+              ) : (
+                <Text style={[styles.lockedCommentText, { marginTop: 15 }]}>
+                  🔒 Add this movie into **Watchlist** first before commenting.
+                </Text>
+              )
+            ) : (
+              <Text style={[styles.lockedCommentText, { marginTop: 15 }]}>
+                🔒 Please **Login** into your account first to read or write comments.
               </Text>
-            </View>
-          )}
+            )}
+          </View>
 
         </View>
       </ScrollView>

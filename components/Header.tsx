@@ -1,26 +1,60 @@
+import { Ionicons } from '@expo/vector-icons'; // Pastikan expo icons diimport
+import { useRouter } from 'expo-router';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+// 💡 Di sini kita daftarkan jenis data (Props) supaya TypeScript faham dan tak marah
 interface HeaderProps {
   title: string;
+  showBack?: boolean;      // Tanda soal (?) bermaksud ia bersifat optional
+  backAction?: () => void; // Fungsi optional untuk custom back trigger
 }
 
-export default function Header({ title }: HeaderProps) {
+export default function Header({ title, showBack = true, backAction }: HeaderProps) {
+  const router = useRouter();
+
+  // Jika ada custom backAction guna yang tu, jika tiada automatik guna router.back()
+  const handleBack = () => {
+    if (backAction) {
+      backAction();
+    } else {
+      router.back();
+    }
+  };
+
   return (
     <View style={styles.headerContainer}>
-      <Text style={styles.headerText}>{title}</Text>
+      {showBack && (
+        <Pressable onPress={handleBack} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#E50914" />
+        </Pressable>
+      )}
+      <Text style={styles.headerTitle}>{title}</Text>
+      {/* View kosong di kanan sekadar untuk bagi teks tajuk kekal center balance */}
+      {showBack && <View style={{ width: 24 }} />}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   headerContainer: {
-    marginVertical: 16,
+    height: 60,
+    backgroundColor: '#1F1F1F',
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2A2A2A',
   },
-  headerText: {
-    fontSize: 26,
-    fontWeight: 'bold',
+  headerTitle: {
     color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    flex: 1,
+    textAlign: 'center',
+  },
+  backButton: {
+    padding: 4,
   },
 });
