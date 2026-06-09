@@ -5,7 +5,7 @@ import { ActivityIndicator, Alert, FlatList, Keyboard, Pressable, ScrollView, St
 import Header from '../../components/Header';
 import MovieCard from '../../components/MovieCard';
 
-interface Movie { //nice
+interface Movie {
   Title: string;
   Year: string;
   imdbID: string;
