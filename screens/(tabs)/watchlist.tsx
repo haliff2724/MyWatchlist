@@ -65,7 +65,6 @@ export default function Watchlist({ navigation }: { navigation: any }) {
         contentContainerStyle={styles.scrollContent}
         ListEmptyComponent={renderEmptyWatchlist}
         renderItem={({ item }) => (
-          /* 3. Replaced <Link> with Pressable + navigation.navigate */
           <Pressable 
             style={{ width: '100%' }}
             onPress={() => navigation.navigate('Details', { id: item.imdbID })}

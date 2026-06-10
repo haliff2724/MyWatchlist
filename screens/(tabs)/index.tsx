@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native'; // 1. Import the hook
+import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Header from '../../components/Header';
@@ -110,7 +110,7 @@ export default function Index() {
       };
       currentList.push(saveItem);
       await AsyncStorage.setItem('watchlist', JSON.stringify(currentList));
-      Alert.alert('Berjaya!', `"${movie.Title}" dimasukkan ke Watchlist.`);
+      Alert.alert('Successful!', `"${movie.Title}" been added to Watchlist.`);
     } catch (error) {
       Alert.alert('Error', 'adding movie to watchlist.');
     }

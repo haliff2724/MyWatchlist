@@ -239,7 +239,7 @@ export default function Details() {
   if (!movie) {
     return (
       <View style={[styles.container, styles.center]}>
-        <Text style={{ color: '#FFFFFF' }}>Maklumat filem tidak ditemui.</Text>
+        <Text style={{ color: '#FFFFFF' }}>Movie details not found.</Text>
       </View>
     );
   }
@@ -348,7 +348,7 @@ export default function Details() {
                     </Text>
                     <TextInput
                       style={styles.commentInput}
-                      placeholder="Tulis pendapat atau nota peribadi anda mengenai filem ini..."
+                      placeholder="Write your comments..."
                       placeholderTextColor="#666666"
                       multiline
                       value={commentInput}
